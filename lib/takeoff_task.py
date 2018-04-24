@@ -27,15 +27,20 @@ class Takeoff():
         # Goal
         if target_pos is None :
             print("Setting default init pose")
-        self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 100.])
+        self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 30.])
 
     def get_reward(self):
         """Uses current pose of sim to return reward."""
-        reward = 1.0 / (abs(self.sim.pose[2] - self.target_pos[2]) + 1)
-        reward += .01 * self.sim.v[2]
-        # reward = 1. - .3 * (abs(self.sim.pose[:3] - self.target_pos)).sum()
-        return reward
+        reward = 1.0 / (abs(self.sim.pose[:3] - self.target_pos).sum() + 0.1)
+        reward += 10.0 / (abs(self.sim.pose[2] - self.target_pos[2]) + 0.1)
 
+        print("Reward = {:7.3f}, z_pose = {:7.3f}, z_velocity = {:7.3f})".format(reward, self.sim.pose[2], self.sim.v[2]))
+
+        # if abs(self.sim.pose[2] - self.target_pos[2] + 1.0) < 10.0:
+        #     reward += 10
+        # else:
+        #     reward += .001 * self.sim.v[2]
+        return reward
 
     def step(self, rotor_speeds):
         """Uses action to obtain next state, reward, done."""
@@ -45,9 +50,12 @@ class Takeoff():
             done = self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
             reward += self.get_reward()
             pose_all.append(self.sim.pose)
-            if self.sim.pose[2] > self.target_pos[2]:
-                done = True
-                reward += 1000
+            # #reward success
+            # if done and self.sim.pose[2] > self.target_pos[2]:
+            #     reward += 500
+            # # penalize crash
+            # if done and self.sim.time < self.sim.runtime:
+            #     reward += -500
         next_state = np.concatenate(pose_all)
         return next_state, reward, done
 
