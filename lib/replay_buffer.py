@@ -7,6 +7,7 @@ class ReplayBuffer:
 
     def __init__(self, buffer_size, batch_size):
         """Initialize a ReplayBuffer object.
+
         Params
         ======
             buffer_size: maximum size of buffer

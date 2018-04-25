@@ -21,41 +21,32 @@ class Actor:
         self.action_low = action_low
         self.action_high = action_high
         self.action_range = self.action_high - self.action_low
-
-        # Initialize any other variables here
-
         self.build_model()
 
     def build_model(self):
         """Build an actor (policy) network that maps states -> actions."""
+
         # Define input layer (states)
         states = layers.Input(shape=(self.state_size,), name='states')
 
         # Add hidden layers
-        net = layers.Dense(units=400,
-                           kernel_regularizer=layers.regularizers.l2(1e-2),
-                           kernel_initializer=layers.initializers.RandomUniform(
-                               minval=-1/np.sqrt(self.state_size),
-                               maxval=1/np.sqrt(self.state_size)))(states)
+        net = layers.Dense(units=32, activation='relu')(states)
         net = layers.BatchNormalization()(net)
-        net = layers.Activation("relu")(net)
-        net = layers.Dense(units=300,
-                           kernel_regularizer=layers.regularizers.l2(1e-2),
-                           kernel_initializer=layers.initializers.RandomUniform(
-                               minval=-1/np.sqrt(400),
-                               maxval=1/np.sqrt(400)))(net)
+        net = layers.Dropout(0.5)(net)
+        net = layers.Dense(units=64, activation='relu')(net)
         net = layers.BatchNormalization()(net)
-        net = layers.Activation("relu")(net)
-
-        # Try different layer sizes, activations, add batch normalization, regularizers, etc.
+        net = layers.Dropout(0.5)(net)
+        net = layers.Dense(units=32, activation='relu')(net)
+        net = layers.BatchNormalization()(net)
+        net = layers.Dropout(0.5)(net)
 
         # Add final output layer with sigmoid activation
-        raw_actions = layers.Dense(units=self.action_size, activation='tanh',
-            name='raw_actions',kernel_initializer=layers.initializers.RandomUniform(minval=-0.003, maxval=0.003))(net)
+        raw_actions = layers.Dense(units=self.action_size, activation='sigmoid',
+                                   name='raw_actions')(net)
 
         # Scale [0, 1] output for each action dimension to proper range
         actions = layers.Lambda(lambda x: (x * self.action_range) + self.action_low,
-            name='actions')(raw_actions)
+                                name='actions')(raw_actions)
 
         # Create Keras model
         self.model = models.Model(inputs=states, outputs=actions)
@@ -64,10 +55,8 @@ class Actor:
         action_gradients = layers.Input(shape=(self.action_size,))
         loss = K.mean(-action_gradients * actions)
 
-        # Incorporate any additional losses here (e.g. from regularizers)
-
         # Define optimizer and training function
-        optimizer = optimizers.Adam(lr=1e04)
+        optimizer = optimizers.Adam()
         updates_op = optimizer.get_updates(params=self.model.trainable_weights, loss=loss)
         self.train_fn = K.function(
             inputs=[self.model.input, action_gradients, K.learning_phase()],
